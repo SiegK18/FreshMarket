@@ -1,0 +1,442 @@
+openapi: 3.0.3
+info:
+  title: MarketFresh Backend API
+  version: 0.1.0
+servers:
+  - url: http://localhost:4000
+paths:
+  /health:
+    get:
+      summary: Healthcheck
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+  /api/products:
+    get:
+      summary: Lister les produits
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [veg, meat]
+      responses:
+        '200':
+          description: Liste de produits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+  /api/products/{id}:
+    get:
+      summary: Récupérer un produit
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Produit
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/carts:
+    post:
+      summary: Créer un panier
+      responses:
+        '201':
+          description: Panier créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cartId:
+                    type: string
+                    format: uuid
+  /api/carts/{id}:
+    get:
+      summary: Récupérer un panier
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Panier
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cart:
+                    $ref: '#/components/schemas/Cart'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/carts/{id}/items:
+    put:
+      summary: Ajouter/modifier un item du panier
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, quantity]
+              properties:
+                productId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Panier mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cart:
+                    $ref: '#/components/schemas/Cart'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/carts/{id}/items/{productId}:
+    delete:
+      summary: Supprimer un item du panier
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: productId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Panier mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cart:
+                    $ref: '#/components/schemas/Cart'
+  /api/meat/cold-chain/{cartId}:
+    get:
+      summary: Résumé chaîne du froid pour un panier
+      parameters:
+        - in: path
+          name: cartId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Contraintes chaîne du froid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hasMeat:
+                    type: boolean
+                  requirements:
+                    nullable: true
+                    type: object
+                    properties:
+                      storageMinC:
+                        type: number
+                      storageMaxC:
+                        type: number
+                      maxHoursOutside:
+                        type: integer
+                      note:
+                        type: string
+  /api/orders:
+    post:
+      summary: Créer une commande
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cartId, customer]
+              properties:
+                cartId:
+                  type: string
+                  format: uuid
+                customer:
+                  $ref: '#/components/schemas/Customer'
+      responses:
+        '201':
+          description: Commande créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/orders/{id}:
+    get:
+      summary: Récupérer une commande
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Commande
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/payments/intent:
+    post:
+      summary: Créer un payment intent (mock)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId]
+              properties:
+                orderId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Intent créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider:
+                    type: string
+                  paymentIntentId:
+                    type: string
+                    format: uuid
+                  clientSecret:
+                    type: string
+  /api/payments/confirm:
+    post:
+      summary: Confirmer un payment intent (mock)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paymentIntentId]
+              properties:
+                paymentIntentId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Commande payée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+components:
+  responses:
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflit / règle métier
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+    ColdChain:
+      type: object
+      properties:
+        required:
+          type: boolean
+        storageMinC:
+          type: number
+        storageMaxC:
+          type: number
+        maxHoursOutside:
+          type: integer
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [veg, meat]
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        priceCents:
+          type: integer
+        unit:
+          type: string
+        origin:
+          type: string
+        freshnessDate:
+          type: string
+          example: '2026-02-11'
+        freshnessDays:
+          type: integer
+          nullable: true
+        stockQty:
+          type: integer
+        isActive:
+          type: boolean
+        coldChain:
+          allOf:
+            - $ref: '#/components/schemas/ColdChain'
+          nullable: true
+    CartItem:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        product:
+          $ref: '#/components/schemas/Product'
+        lineTotalCents:
+          type: integer
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [open, checked_out, cancelled]
+        createdAt:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        totalCents:
+          type: integer
+    Customer:
+      type: object
+      required: [name, email, deliveryAddress]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        deliveryAddress:
+          type: string
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        unitPriceCents:
+          type: integer
+        product:
+          $ref: '#/components/schemas/Product'
+        lineTotalCents:
+          type: integer
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        cartId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending_payment, paid, cancelled]
+        totalCents:
+          type: integer
+        customer:
+          $ref: '#/components/schemas/Customer'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        createdAt:
+          type: string

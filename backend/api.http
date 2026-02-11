@@ -1,0 +1,56 @@
+### Health
+GET http://localhost:4000/health
+
+### List products
+GET http://localhost:4000/api/products
+
+### Create cart
+# @name createCart
+POST http://localhost:4000/api/carts
+Content-Type: application/json
+
+{}
+
+### Add item to cart (replace IDs)
+PUT http://localhost:4000/api/carts/{{createCart.response.body.cartId}}/items
+Content-Type: application/json
+
+{
+  "productId": "REPLACE_WITH_PRODUCT_UUID",
+  "quantity": 2
+}
+
+### Get cold chain summary
+GET http://localhost:4000/api/meat/cold-chain/{{createCart.response.body.cartId}}
+
+### Create order
+# @name createOrder
+POST http://localhost:4000/api/orders
+Content-Type: application/json
+
+{
+  "cartId": "{{createCart.response.body.cartId}}",
+  "customer": {
+    "name": "Ada",
+    "email": "ada@example.com",
+    "phone": "0600000000",
+    "deliveryAddress": "1 rue de la Paix, 75000 Paris"
+  }
+}
+
+### Create payment intent
+# @name createIntent
+POST http://localhost:4000/api/payments/intent
+Content-Type: application/json
+
+{
+  "orderId": "{{createOrder.response.body.order.id}}"
+}
+
+### Confirm payment
+POST http://localhost:4000/api/payments/confirm
+Content-Type: application/json
+
+{
+  "paymentIntentId": "{{createIntent.response.body.paymentIntentId}}"
+}
